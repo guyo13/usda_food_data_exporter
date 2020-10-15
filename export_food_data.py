@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import pandas as pd
+import time
 
 DATASET_DIR = "FoodData_Central_csv_2020-04-29"
 FOOD_DATASET_FILE = "food.csv"
@@ -33,44 +34,45 @@ def get_nutrient_names(nutrient_table=None):
     return res
 
 def get_nutrient_dict(nutrient_table=None):  
-    nutrient_table = nutrient_table if isinstance(nutrient_table, pd.DataFrame) else  pd.read_csv(f'{DATASET_DIR}/{NUTRIENT_FILE}')
+    nutrient_table = nutrient_table if isinstance(nutrient_table, pd.DataFrame) else get_nutrients_table(usecols=["name", "unit_name"])
     return nutrient_table.to_dict(orient='index')
 
-def export_foods_with_nutrient_data(base_filename="exported_foods"):
-    # Read CSV Files
-    food_table = get_food_table(usecols=["description", "data_type"])
-    nutrient_table = get_nutrients_table(usecols=["name", "unit_name"])
-    nutri_value_table = get_nutri_data_table()
+def get_foods_with_nutrient_data(translate_nutrients=True):
+    print("Reading food nutrient data...")
+    food_nutrients = get_nutri_data_table()
+    food_nutrients.sort_values(
+                           "fdc_id",
+                           inplace=True,
+                           ignore_index=True)
 
-    # Get Nutrients dict
-    nutri_dict = get_nutrient_dict(nutrient_table)
+    food_nutrients = food_nutrients.pivot(
+                                        index="fdc_id",
+                                        columns="nutrient_id",
+                                        values="amount")
 
-    # Get column names for output
-    columns = ["fdc_id", "description", "data_type"] + get_nutrient_names(nutrient_table)
+    print("Reading food data...")
+    foods = get_food_table(usecols=["description", "data_type"])
+    print("Processing...")
+    final = pd.concat([foods, food_nutrients], axis=1, join='inner')
+    if translate_nutrients:
+        print("Translating nutrient ids to nutrient names")
+        nutri_dict = get_nutrient_dict()
+        final.rename(inplace=True,
+                     axis=1,
+                     mapper= lambda x: nutri_dict[x]["name"] if isinstance(x, int) else x)
+    return final
 
-    # Create output DF
-    out_df = pd.DataFrame(columns=columns)
-    out_df.set_index("fdc_id")
-
-    # Iterate Foods
-    for idx, food_row in food_table.iterrows():
-        print(f'Working on {idx}')
-        data = nutri_value_table.query(f'fdc_id == {idx}')
-        output_row = {
-            "fdc_id": idx,
-            "description": food_row["description"],
-            "data_type": food_row["data_type"]
-            }
-        for _idx, nutrient_row in data.iterrows():
-            nutrient_id = nutrient_row["nutrient_id"]
-            nutrient_name = nutri_dict[nutrient_id]["name"]
-            output_row[nutrient_name] = nutrient_row["amount"]
-        out_df = out_df.append(output_row, ignore_index=True)
-        break
-    out_df.to_csv(f'{base_filename}.csv')
-    #out_df.to_pickle(f'{base_filename}.pickle')
-
-
-
+def main(base_filename="exported_foods", describe=True, translate_nutrients=True):
+    start = time.time()
+    df = get_foods_with_nutrient_data(translate_nutrients=translate_nutrients)
+    csv_filename = f'{base_filename}.csv'
+    print(f'Writing CSV file to {csv_filename}')
+    df.to_csv(csv_filename)
+    if describe:
+        df.describe()
+    print(f'Data Export finished.\nWritten to: {csv_filename}')
+    end = time.time()
+    print(f'Finished in {end-start} seconds')
+    
 if __name__ == "__main__":
-    export_foods_with_nutrient_data()
+    main()

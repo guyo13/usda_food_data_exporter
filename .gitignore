@@ -1,0 +1,5 @@
+*.csv
+venv/
+.DS_Store
+.ipynb_checkpoints/
+*.pdf
