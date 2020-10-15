@@ -39,21 +39,21 @@ On Windows and for futher details about virtual env see- https://packaging.pytho
 You can specify them using the `--food-db-path`, `--food-nutrient-db-path` and `--nutrient-table-path` respectively. Otherwise the program assumes those files are in your current working directory.
 
 ### Accessing the help menu
-`python fooddata_exporter.py -h` will print the help menu where you can find all the different arguemnts and their supported values.
+`python fooddata_exporter.py -h` will print the help menu where you can find all the different arguments and their supported values.
 
 ### Noteworthy options
 
 `--export-file-name` - The file name of the output. For each format exported will append `.<format name>` to this path.
 
-`--export-format <format>` - Specifies an export format. You can specify this multiple times.
+`--export-format <format>` - Specifies an export format. You can specify this multiple times for exporting into multiple formats.
 
-`--exclude-data-type <type>` - Excludes a food data source("data_type") from the result. You can specify this multiple times.
+`--exclude-data-type <type>` - Excludes a food data source("data_type") from the result. You can specify this multiple times to exclude multiple sources.
 
-`--use-nutrient-names` - Use nutrient names from `nutrient.csv` in the result header instead of nutrient ids.
+`--use-nutrient-names` - Use nutrient names from `nutrient.csv` in the result's header/keys instead of nutrient ids.
 
 ## Example Usage
 
-### Combine and export nutritional values with nutrient names
+### Combine data and export nutritional values with nutrient names
 ```
 python fooddata_exporter.py --use-nutrient-names --export-format csv --export-file-name ./exported/food_database
 ```
@@ -67,6 +67,14 @@ python fooddata_exporter.py --export-format csv --export-format json --export-fi
 ```
 python fooddata_exporter.py --exclude-data-type sub_sample_food --exclude-data-type agricultural_acquisition --export-file-name ./exported/food_database
 ```
+
+## Issues and Contributions
+
+If you find a bug, have a feature request or have a question, you are welcome to open an Issue on the <a href="https://github.com/guyo13/usda_food_data_exporter/issues" target="_blank">Issue Tracker</a>
+
+If you want to contribute, open a pull request on <a href="https://github.com/guyo13/usda_food_data_exporter" target="_blank">GitHub</a>.
+
+All outside contributions are licensed to the author under the MIT license.
 
 ## License
 FoodData Exporter is licensed under the GNU General Public License version 3
