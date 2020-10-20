@@ -5,3 +5,4 @@ venv/
 *.pdf
 __pycache__/
 example.txt
+*.numbers

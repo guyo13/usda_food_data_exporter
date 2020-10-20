@@ -14,11 +14,14 @@ from sys import exit
 FOOD_DATASET_FILE = "food.csv"
 FOOD_NUTRIENT_DATASET_FILE = "food_nutrient.csv"
 NUTRIENT_FILE = "nutrient.csv"
+BRANDED_FOOD_FILE = "branded_food.csv"
 
 DEFAULT_FOOD_DATASET_PATH = join_path(getcwd(), FOOD_DATASET_FILE)
 DEFAULT_FOOD_NUTRIENT_DATASET_PATH = join_path(getcwd(),FOOD_NUTRIENT_DATASET_FILE)
 DEFAULT_NUTRIENT_PATH = join_path(getcwd(),NUTRIENT_FILE)
+DEFAULT_BRANDED_PATH = join_path(getcwd(), BRANDED_FOOD_FILE)
 
+DEFAULT_BRANDED_COLS = ["brand_owner", "ingredients", "market_country"]
 DEFAULT_EXPORT_BASE_NAME = "exported_foods"
 SUPPORTED_EXPORT_FILE_FORMATS = {"csv", "json", "excel", "sql", "pickle"}
 FOOD_TYPES = {
@@ -74,6 +77,23 @@ def get_nutri_data_table(low_memory=False, path=DEFAULT_FOOD_NUTRIENT_DATASET_PA
     """
     return pd.read_csv(path, low_memory=low_memory)
 
+def get_branded_food_table(low_memory=False, path=DEFAULT_BRANDED_PATH, usecols=None):
+    """ Returns a DataFrame with data from the USDA FoodData branded_food.csv file-
+        specified by path. Indexed by 'fdc_id' column.
+
+        Params:
+        low_memory Boolean (Default False) - DataFrame argument
+        usecols Iterable<String> (Default None) - DataFrame argument, indicates the columns to keep.
+                                                  If not None and 'fdc_id' not in it, will add 'fdc_id'
+        path String (Default is branded_food.csv file in CWD) - The path to the branded_food.csv file
+    """
+    if usecols is not None:
+        if "fdc_id" not in usecols:
+            usecols.append("fdc_id")
+        return pd.read_csv(path, low_memory=low_memory, index_col="fdc_id", usecols=usecols)
+    else:
+        return pd.read_csv(path, low_memory=low_memory, index_col="fdc_id")
+
 # Deprecated
 def get_nutrient_names(nutrient_table=None, path=DEFAULT_NUTRIENT_PATH):
     """ Returns a list of nutrient names, based on the nutrient.csv file
@@ -101,12 +121,17 @@ def get_nutrient_dict(nutrient_table=None, path=DEFAULT_NUTRIENT_PATH):
     nutrient_table = nutrient_table if isinstance(nutrient_table, pd.DataFrame) else get_nutrients_table(usecols=["name", "unit_name"], path=path)
     return nutrient_table.to_dict(orient='index')
 
+
+
 def get_foods_with_nutrient_data(
         food_db_path=DEFAULT_FOOD_DATASET_PATH,
         food_nutrient_db_path=DEFAULT_FOOD_NUTRIENT_DATASET_PATH,
         nutrient_table_path=DEFAULT_NUTRIENT_PATH,
+        branded_food_table_path=DEFAULT_BRANDED_PATH,
         translate_nutrients=True,
-        excluded_data_types=None
+        excluded_data_types=None,
+        branded_food_data=False,
+        branded_food_columns=DEFAULT_BRANDED_COLS,
         ):
     print("Reading food nutrient data...")
     food_nutrients = get_nutri_data_table(path=food_nutrient_db_path)
@@ -133,6 +158,10 @@ def get_foods_with_nutrient_data(
         final.rename(inplace=True,
                      axis=1,
                      mapper= lambda x: nutri_dict[x]["name"] if isinstance(x, int) else x)
+    if branded_food_data:
+        print("Adding data from branded foods...")
+        bfoods = get_branded_food_table(usecols=branded_food_columns, path=branded_food_table_path)
+        final = pd.concat([final, bfoods], axis=1, join='outer')
     print("Finished Processing")
     return final
 
@@ -184,9 +213,12 @@ def main(
         food_nutrient_db_path=DEFAULT_FOOD_NUTRIENT_DATASET_PATH,
         nutrient_table_path=DEFAULT_NUTRIENT_PATH,
         export_file_name=DEFAULT_EXPORT_BASE_NAME,
+        branded_food_table_path=DEFAULT_BRANDED_PATH,
         export_formats=["csv"],
         translate_nutrients=True,
         excluded_data_types=[],
+        branded_food_data=False,
+        branded_food_columns=DEFAULT_BRANDED_COLS,
         ):
 
     # Validate arguments
@@ -209,9 +241,12 @@ def main(
             food_db_path=food_db_path,
             food_nutrient_db_path=food_nutrient_db_path,
             nutrient_table_path=nutrient_table_path,
+            branded_food_table_path=branded_food_table_path,
             translate_nutrients=translate_nutrients,
-            excluded_data_types=excluded_data_types
-                                )
+            excluded_data_types=excluded_data_types,
+            branded_food_data=branded_food_data,
+            branded_food_columns=branded_food_columns,
+           )
     # Export to selected formats
     export_files(df,
                 export_file_name=export_file_name,
@@ -235,6 +270,9 @@ if __name__ == "__main__":
     parser.add_argument('--nutrient-table-path', metavar="NUTRIENT TABLE FILE PATH",
                         dest='nutrient_table_path', action='store', default=DEFAULT_NUTRIENT_PATH,
                         help='The path to the nutrient.csv file')
+    parser.add_argument('--branded-food-table-path', metavar="BRANDED FOOD TABLE FILE PATH",
+                        dest='branded_food_table_path', action='store', default=DEFAULT_BRANDED_PATH,
+                        help='The path to the branded_food.csv file')
     # Export options
     parser.add_argument('--export-file-name', metavar="EXPORTED FILE BASE PATH",
                         dest='export_file_name', action='store', default=DEFAULT_EXPORT_BASE_NAME,
@@ -250,6 +288,13 @@ if __name__ == "__main__":
     parser.add_argument('--exclude-data-type', metavar="EXCLUDED DATA TYPE",
                         dest='excluded_data_types', action='append', default=[],
                         help=f'Excludes an USDA FoodData data type from the result. Can specify multiple times, no data type excluded by default. FoodData types: {FOOD_TYPES}')
+    parser.add_argument('--include-branded-data',
+                        dest='include_branded_data',
+                        action='store_true',
+                        help='Include extra data about branded foods (from branded_foods.csv)')
+    parser.add_argument('--branded-data-columns', metavar="COLUMN NAME 1[,COLUMN NAME 2,....]",
+                        dest='branded_data_columns', action='store', default=",".join(DEFAULT_BRANDED_COLS),
+                        help=f'A comma-separated list of columns to include from branded_foods.csv. By default {",".join(DEFAULT_BRANDED_COLS)}') 
     args = vars(parser.parse_args())
     main(
         food_db_path=args["food_db_path"],
@@ -257,6 +302,9 @@ if __name__ == "__main__":
         nutrient_table_path=args["nutrient_table_path"],
         export_file_name=args["export_file_name"],
         export_formats=args["export_formats"],
+        branded_food_table_path=args["branded_food_table_path"],
         translate_nutrients=args["use_nutrient_names"],
         excluded_data_types=args["excluded_data_types"],
+        branded_food_data=args["include_branded_data"],
+        branded_food_columns=args["branded_data_columns"].split(","),
     )
