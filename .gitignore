@@ -4,4 +4,4 @@ venv/
 .ipynb_checkpoints/
 *.pdf
 __pycache__/
-*.txt
+example.txt
