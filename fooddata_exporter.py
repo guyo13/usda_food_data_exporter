@@ -146,7 +146,7 @@ def get_foods_with_nutrient_data(
                                         values="amount")
 
     print("Reading food data...")
-    foods = get_food_table(usecols=["description", "data_type"], path=food_db_path)
+    foods = get_food_table(usecols=["description", "data_type", "publication_date"], path=food_db_path)
     if excluded_data_types != None:
         foods = foods[ ~foods["data_type"].isin(excluded_data_types) ]
 
