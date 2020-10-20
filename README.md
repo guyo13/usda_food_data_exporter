@@ -8,6 +8,7 @@ the Open-source diet consultant that respects your privacy.
 ## Capabilities
 
 * Combining data from the `food.csv` table with data from `nutrient.csv` and `food_nutrient.csv` tables to create the nutritional value of the product
+* Combine data from `branded_food.csv` table
 * Optionally Exclude data based on `data_type` column
 * Export combined results into popular formats including csv, json, excel, sql and more
 
